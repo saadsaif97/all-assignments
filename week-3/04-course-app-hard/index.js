@@ -34,7 +34,8 @@ const courseSchema = new mongoose.Schema({
   description: String,
   price: Number,
   imageLink: String,
-  published: Boolean
+  published: Boolean,
+  author: String
 });
 
 const Admin = mongoose.model('Admin', adminSchema);
@@ -171,67 +172,61 @@ app.post('/admin/login', async (req, res) => {
 });
 
 app.post('/admin/courses', verifyAdmin, async (req, res) => {
-  // logic to create a course
-  const { title, description, price, imageLink } = req.body;
-  if (!title || !description || !price || !imageLink) {
-    return res.status(400).json({ error: 'title, description, price and imageLink all fields are required.' });
+  try {
+    // logic to create a course
+    const { title, description, price, imageLink } = req.body;
+    if (!title || !description || !price || !imageLink) {
+      return res.status(400).json({ error: 'title, description, price and imageLink all fields are required.' });
+    }
+    
+    const newCourse = new Course({
+      title,
+      description,
+      price,
+      imageLink,
+      published: false,
+      author: req.admin.username
+    })
+    await newCourse.save()
+    res.status(201).json({ message: 'Course created successfully.' });
+  } catch (error) {
+    res.status(500).send({error})
   }
-
-  const COURSES = await getCourses()
-  const newCourse = {
-    id: COURSES.length,
-    title,
-    description,
-    price,
-    imageLink,
-    published: false,
-    author: req.admin.username
-  };
-
-  COURSES.push(newCourse);
-  await writeCourses(COURSES)
-  res.status(201).json({ message: 'Course created successfully.' });
 });
 
 app.put('/admin/courses/:courseId', verifyAdmin, async (req, res) => {
-  // logic to edit a course
-  const courseId = parseInt(req.params.courseId);
-  const COURSES = await getCourses()
-  const course = COURSES.find(course => course.id === courseId);
-  
-  if (!course) {
-    return res.status(404).json({ error: 'Course not found.' });
+  try {
+    // logic to edit a course
+    const updatedCourse = await Course.findByIdAndUpdate( req.params.courseId, req.body, { new: true })
+    
+    if (!updatedCourse) return res.status(404).send({error})
+    
+    res.status(200).json(updatedCourse);
+  } catch (error) {
+    res.status(500).send({error})
   }
-
-  const { title, description, price, imageLink } = req.body;
-  if (title) course.title = title;
-  if (description) course.description = description;
-  if (price) course.price = price;
-  if (imageLink) course.imageLink = imageLink;
-  await writeCourses(COURSES)
-
-  res.status(200).json({ message: 'Course updated successfully.' });
 });
 
 app.put('/admin/courses/:courseId/publish', verifyAdmin, async (req, res) => {
-  const courseId = parseInt(req.params.courseId);
-  const COURSES = await getCourses()
-  const course = COURSES.find(course => course.id === courseId);
-
-  if (!course) {
-    return res.status(404).json({ error: 'Course not found.' });
+  try {
+    // const courseId = parseInt(req.params.courseId);
+    const updatedCourse = await Course.findByIdAndUpdate( req.params.courseId, { published: true }, { new: true })
+    if (!updatedCourse) return res.status(404).send({error})
+    
+    res.status(200).json(updatedCourse);
+  } catch (error) {
+    res.status(500).send({error})
   }
-
-  course.published = true;
-  await writeCourses(COURSES)
-  res.status(200).json({ message: 'Course published successfully.' });
 });
 
 app.get('/admin/courses', verifyAdmin, async (req, res) => {
-  // logic to get all courses
-  const COURSES = await getCourses()
-  let adminCourses = COURSES.filter(course => course.author === req.admin.username);
-  res.send(adminCourses)
+  try {
+    // logic to get all courses
+    const adminCourses = await Course.find({ author: req.admin.username })
+    res.send(adminCourses)
+  } catch (error) {
+    res.status(500).send({error})
+  }
 });
 
 // User routes
