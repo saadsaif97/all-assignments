@@ -6,6 +6,17 @@ const fs = require('fs/promises');
 // loading environment variables
 require('dotenv').config()
 
+const mongoose = require('mongoose');
+
+// Connect MongoDB at default port 27017.
+mongoose.connect(`${process.env.DB_STRING}courses`, {})
+.then(() => {
+  console.log('Connected to MongoDB');
+})
+.catch(err => {
+  console.error('Error connecting to MongoDB:', err);
+});
+
 app.use(express.json());
 
 async function getAdmins() {
@@ -313,9 +324,5 @@ app.get('/users/purchasedCourses', verifyUser, async (req, res) => {
 
 app.listen(3000, async () => {
   console.clear()
-  let admins = await getAdmins()
-  let users = await getUsers()
-  let courses = await getCourses()
-  console.log({admins, users, courses})
   console.log('Server is listening on port https://localhost:3000');
 });
