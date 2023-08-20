@@ -2,6 +2,9 @@ const express = require('express');
 const jwt = require("jsonwebtoken");
 const app = express();
 
+// loading environment variables
+require('dotenv').config()
+
 app.use(express.json());
 
 let ADMINS = [];
@@ -118,10 +121,9 @@ app.post('/admin/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials.' });
   }
   
-  // Create a session or token for authenticated admin
-  // In a real-world scenario, you would use JWT or a similar mechanism
-  // Here, we'll just simulate a successful login
-  res.status(200).json({ message: 'Admin logged in successfully.' });
+  // Generate a JWT token with a 1-hour expiration time
+  const token = jwt.sign({ username: username }, ADMIN_SECRET, { expiresIn: '1h' });
+  res.status(201).json({ message: 'Admin signed up successfully.', token });
 });
 
 app.post('/admin/courses', verifyAdmin, (req, res) => {
@@ -212,10 +214,9 @@ app.post('/users/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials.' });
   }
   
-  // Create a session or token for authenticated admin
-  // In a real-world scenario, you would use JWT or a similar mechanism
-  // Here, we'll just simulate a successful login
-  res.status(200).json({ message: 'User logged in successfully.' });
+  // Generate a JWT token with a 1-hour expiration time
+  const token = jwt.sign({ username: username }, USER_SECRET, { expiresIn: '1h' });
+  res.status(201).json({ message: 'Admin signed up successfully.', token });
 });
 
 app.get('/users/courses', verifyUser, (req, res) => {
