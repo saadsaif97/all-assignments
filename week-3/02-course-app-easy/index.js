@@ -25,6 +25,23 @@ function verifyAdmin(req, res, next) {
   next()
 }
 
+function verifyUser(req, res, next) {
+  // logic to log in user
+  const { username, password } = req.headers
+  if (!username || !password) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+
+  // Check if user exists and password matches
+  const user = USERS.find(user => user.username === username && user.password === password);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+  
+  req.user = { username: user.username }
+  next()
+}
+
 // Admin routes
 app.post('/admin/signup', (req, res) => {
   const { username, password } = req.body
@@ -122,21 +139,49 @@ app.get('/admin/courses', verifyAdmin, (req, res) => {
 // User routes
 app.post('/users/signup', (req, res) => {
   // logic to sign up user
+  const { username, password } = req.body
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
+
+  // Check if user already exists
+  if (USERS.some(user => user.username === username)) {
+    return res.status(409).json({ error: 'Username already exists.' });
+  }
+
+  const newUser = { username, password };
+  USERS.push(newUser);
+  res.status(201).json({ message: 'User signed up successfully.' });
 });
 
 app.post('/users/login', (req, res) => {
   // logic to log in user
+  const { username, password } = req.headers
+  if (!username || !password) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+
+  // Check if user exists and password matches
+  const user = USERS.find(user => user.username === username && user.password === password);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+  
+  // Create a session or token for authenticated admin
+  // In a real-world scenario, you would use JWT or a similar mechanism
+  // Here, we'll just simulate a successful login
+  res.status(200).json({ message: 'User logged in successfully.' });
 });
 
-app.get('/users/courses', (req, res) => {
+app.get('/users/courses', verifyUser, (req, res) => {
   // logic to list all courses
 });
 
-app.post('/users/courses/:courseId', (req, res) => {
+app.post('/users/courses/:courseId', verifyUser, (req, res) => {
   // logic to purchase a course
 });
 
-app.get('/users/purchasedCourses', (req, res) => {
+app.get('/users/purchasedCourses', verifyUser, (req, res) => {
   // logic to view purchased courses
 });
 
