@@ -26,7 +26,8 @@ const adminSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true },
-  password: String
+  password: String,
+  courses: []
 });
 
 const courseSchema = new mongoose.Schema({
@@ -293,28 +294,27 @@ app.get('/users/courses', verifyUser, async (req, res) => {
 });
 
 app.post('/users/courses/:courseId', verifyUser, async (req, res) => {
-  const courseId = parseInt(req.params.courseId)
-  const USERS = await getUsers()
-  const currentUser = USERS.find(user => user.username == req.user.username)
-  const currentCourses = currentUser.courses
-  // logic to purchase a course
-  let alreadyPurchased = currentCourses.includes(courseId);
-  if (alreadyPurchased) return res.status(400).send({error: "Already purchased"})
-  
-  const user = USERS.find(user => user.username === req.user.username);
-  user.courses.push(courseId)
-  await writeUsers(USERS)
-  return res.send({message: "Course purchased successfully"})
+  try {
+    const user = await User.findOne({ username: req.user.username })
+    let alreadyPurchased = user.courses?.includes(req.params.courseId);
+    if (alreadyPurchased) return res.status(400).send({error: "Already purchased"})
+    
+    user.courses.push(req.params.courseId)
+    await user.save()
+    return res.send({message: "Course purchased successfully"})
+  } catch (error) {
+    res.status(500).send(error)
+  }
 });
 
 app.get('/users/purchasedCourses', verifyUser, async (req, res) => {
-  const USERS = await getUsers()
-  const currentUser = USERS.find(user => user.username == req.user.username)
-  const currentCourses = currentUser.courses
-  // logic to view purchased courses
-  const COURSES = await getCourses()
-  let userCourses = COURSES.filter(course => currentCourses.includes(course.id));
-  res.send(userCourses)
+  try {
+    const currentUser = await User.findOne({ username: req.user.username })
+    const userCourses = await Course.find({ _id: { $in: currentUser.courses } })
+    res.send(userCourses)
+  } catch (error) {
+    res.status(500).send(error)
+  }
 });
 
 app.listen(3000, async () => {
