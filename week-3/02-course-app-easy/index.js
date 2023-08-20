@@ -7,6 +7,24 @@ let ADMINS = [];
 let USERS = [];
 let COURSES = [];
 
+function verifyAdmin(req, res, next) {
+  // logic to log in admin
+  const { username, password } = req.headers
+  if (!username || !password) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+
+  // Check if admin exists and password matches
+  const admin = ADMINS.find(admin => admin.username === username && admin.password === password);
+
+  if (!admin) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+  
+  req.admin = { username: admin.username }
+  next()
+}
+
 // Admin routes
 app.post('/admin/signup', (req, res) => {
   const { username, password } = req.body
@@ -21,7 +39,7 @@ app.post('/admin/signup', (req, res) => {
 
   const newAdmin = { username, password };
   ADMINS.push(newAdmin);
-  res.status(201).json({ error: 'Admin signed up successfully.' });
+  res.status(201).json({ message: 'Admin signed up successfully.' });
 });
 
 app.post('/admin/login', (req, res) => {
@@ -32,10 +50,10 @@ app.post('/admin/login', (req, res) => {
   }
 
   // Check if admin exists and password matches
-  const admin = admins.find(admin => admin.username === username && admin.password === password);
+  const admin = ADMINS.find(admin => admin.username === username && admin.password === password);
 
   if (!admin) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
+    return res.status(401).json({ error: 'Invalid credentials.' });
   }
   
   // Create a session or token for authenticated admin
@@ -44,7 +62,7 @@ app.post('/admin/login', (req, res) => {
   res.status(200).json({ message: 'Admin logged in successfully.' });
 });
 
-app.post('/admin/courses', (req, res) => {
+app.post('/admin/courses', verifyAdmin, (req, res) => {
   // logic to create a course
   const { title, description, price, imageLink } = req.body;
   if (!title || !description || !price || !imageLink) {
@@ -58,20 +76,20 @@ app.post('/admin/courses', (req, res) => {
     price,
     imageLink,
     published: false,
-    author: req.user.username
+    author: req.admin.username
   };
 
   COURSES.push(newCourse);
-  res.status(201).json({ error: 'Course created successfully.' });
+  res.status(201).json({ message: 'Course created successfully.' });
 });
 
-app.put('/admin/courses/:courseId', (req, res) => {
+app.put('/admin/courses/:courseId', verifyAdmin, (req, res) => {
   // logic to edit a course
   const courseId = req.params.courseId;
-  const course = COURSES.find(course => course.id === courseId);
-
+  const course = COURSES.find(course => course.id == courseId);
+  
   if (!course) {
-    return res.status(404).json({ message: 'Course not found.' });
+    return res.status(404).json({ error: 'Course not found.' });
   }
 
   const { title, description, price, imageLink } = req.body;
@@ -83,21 +101,21 @@ app.put('/admin/courses/:courseId', (req, res) => {
   res.status(200).json({ message: 'Course updated successfully.' });
 });
 
-app.put('/admin/courses/:courseId/publish', (req, res) => {
+app.put('/admin/courses/:courseId/publish', verifyAdmin, (req, res) => {
   const courseId = req.params.courseId;
-  const course = COURSES.find(course => course.id === courseId);
+  const course = COURSES.find(course => course.id == courseId);
 
   if (!course) {
-    return res.status(404).json({ message: 'Course not found.' });
+    return res.status(404).json({ error: 'Course not found.' });
   }
 
   course.published = true;
   res.status(200).json({ message: 'Course published successfully.' });
 });
 
-app.get('/admin/courses', (req, res) => {
+app.get('/admin/courses', verifyAdmin, (req, res) => {
   // logic to get all courses
-  let adminCourses = COURSES.filter(course => course.author === req.user.username);
+  let adminCourses = COURSES.filter(course => course.author === req.admin.username);
   res.send(adminCourses)
 });
 
