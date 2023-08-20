@@ -2,8 +2,8 @@
   "scripts": {
     "dev-easy": "nodemon 02-course-app-easy",
     "dev-easy-2": "nodemon 02-course-app-easy-2",
-    "dev-medium": "nodemon 02-course-app-medium",
-    "dev-hard": "nodemon 02-course-app-hard"
+    "dev-medium": "nodemon 03-course-app-medium",
+    "dev-hard": "nodemon 04-course-app-hard"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

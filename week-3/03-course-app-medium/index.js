@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require("jsonwebtoken");
 const app = express();
+const fs = require('fs/promises');
 
 // loading environment variables
 require('dotenv').config()
@@ -10,6 +11,33 @@ app.use(express.json());
 let ADMINS = [];
 let USERS = [];
 let COURSES = [];
+
+async function getAdmins() {
+  try {
+    const data = await fs.readFile('admins.json', 'utf-8');
+    return JSON.parse(data)
+  } catch (error) {
+    console.log({error})
+  }
+}
+
+async function getUsers() {
+  try {
+    const data = await fs.readFile('users.json', 'utf-8');
+    return JSON.parse(data)
+  } catch (error) {
+    console.log({error})
+  }
+}
+
+async function getCourses() {
+  try {
+    const data = await fs.readFile('courses.json', 'utf-8');
+    return JSON.parse(data)
+  } catch (error) {
+    console.log({error})
+  }
+}
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 const USER_SECRET = process.env.USER_SECRET;
@@ -245,7 +273,11 @@ app.get('/users/purchasedCourses', verifyUser, (req, res) => {
   res.send(userCourses)
 });
 
-app.listen(3000, () => {
+app.listen(3000, async () => {
   console.clear()
+  let admins = await getAdmins()
+  let users = await getUsers()
+  let courses = await getCourses()
+  console.log({admins, users, courses})
   console.log('Server is listening on port https://localhost:3000');
 });
