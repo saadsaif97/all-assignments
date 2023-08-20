@@ -1,7 +1,7 @@
 const express = require('express');
 const jwt = require("jsonwebtoken");
 const app = express();
-const fs = require('fs/promises');
+const bcrypt = require('bcrypt');
 
 // loading environment variables
 require('dotenv').config()
@@ -19,59 +19,27 @@ mongoose.connect(`${process.env.DB_STRING}courses`, {})
 
 app.use(express.json());
 
-async function getAdmins() {
-  try {
-    const data = await fs.readFile('admins.json', 'utf-8');
-    return JSON.parse(data)
-  } catch (error) {
-    console.log({error})
-  }
-}
+const adminSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String
+});
 
-async function writeAdmins(admins) {
-  try {
-    await fs.writeFile('admins.json', JSON.stringify(admins, null, 2), 'utf-8');
-  } catch (error) {
-    console.log({error})
-  }
-}
+const userSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String
+});
 
-async function getUsers() {
-  try {
-    const data = await fs.readFile('users.json', 'utf-8');
-    return JSON.parse(data)
-  } catch (error) {
-    console.log({error})
-  }
-}
+const courseSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  price: Number,
+  imageLink: String,
+  published: Boolean
+});
 
-async function writeUsers(users) {
-  try {
-    await fs.writeFile('users.json', JSON.stringify(users, null, 2), 'utf-8');
-  } catch (error) {
-    console.log({error})
-  }
-}
-
-async function getCourses() {
-  try {
-    const data = await fs.readFile('courses.json', 'utf-8');
-    return JSON.parse(data)
-  } catch (error) {
-    console.log({error})
-  }
-}
-
-async function writeCourses(courses) {
-  try {
-    await fs.writeFile('courses.json', JSON.stringify(courses, null, 2), 'utf-8');
-  } catch (error) {
-    console.log({error})
-  }
-}
-
-const ADMIN_SECRET = process.env.ADMIN_SECRET;
-const USER_SECRET = process.env.USER_SECRET;
+const Admin = mongoose.model('Admin', adminSchema);
+const User = mongoose.model('User', userSchema);
+const Course = mongoose.model('Course', courseSchema);
 
 function verifyAdmin(req, res, next) {
     const authorization = req.headers.authorization;
@@ -87,7 +55,7 @@ function verifyAdmin(req, res, next) {
                 message: 'Invalid Token Format'
             })
         }
-        const decode = jwt.verify(token, ADMIN_SECRET);
+        const decode = jwt.verify(token, process.env.ADMIN_SECRET);
         req.admin = decode
         next()
     } catch (error) {
@@ -125,7 +93,7 @@ function verifyUser(req, res, next) {
               message: 'Invalid Token Format'
           })
       }
-      const decode = jwt.verify(token, USER_SECRET);
+      const decode = jwt.verify(token, process.env.USER_SECRET);
       req.user = decode
       next()
   } catch (error) {
@@ -151,41 +119,55 @@ function verifyUser(req, res, next) {
 
 // Admin routes
 app.post('/admin/signup', async (req, res) => {
-  const { username, password } = req.body
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
+  try {
+    const { username, password } = req.body
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required.' });
+    }
+  
+    // Check if admin already exists
+    const existingAdmin = await Admin.findOne({ username });
+    if (existingAdmin) {
+      return res.status(409).json({ error: 'Username already exists.' });
+    }
+    
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+  
+    const newAdmin = new Admin({ username, password: hashedPassword });
+    await newAdmin.save();
+    res.status(201).json({ message: 'Admin signed up successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating admin.' });
   }
-
-  // Check if admin already exists
-  const ADMINS = await getAdmins()
-  if (ADMINS.some(admin => admin.username === username)) {
-    return res.status(409).json({ error: 'Username already exists.' });
-  }
-
-  const newAdmin = { username, password };
-  ADMINS.push(newAdmin);
-  await writeAdmins(ADMINS)
-  res.status(201).json({ message: 'Admin signed up successfully.' });
 });
 
 app.post('/admin/login', async (req, res) => {
-  // logic to log in admin
-  const { username, password } = req.headers
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
-  }
+  try {
+    // logic to log in admin
+    const { username, password } = req.headers
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required.' });
+    }
 
-  // Check if admin exists and password matches
-  const ADMINS = await getAdmins()
-  const admin = ADMINS.find(admin => admin.username === username && admin.password === password);
-
-  if (!admin) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
+    // Check if admin exists and password matches
+    const admin = await Admin.findOne({ username });
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+    
+    // Check password
+    const passwordMatch = await bcrypt.compare(password, admin.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+    
+    // Generate a JWT token with a 1-hour expiration time
+    const token = jwt.sign({ username: username }, process.env.ADMIN_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ message: 'Admin signed up successfully.', token });
+  } catch (error) {
+    res.status(500).json({ message: 'Error during login.' });
   }
-  
-  // Generate a JWT token with a 1-hour expiration time
-  const token = jwt.sign({ username: username }, ADMIN_SECRET, { expiresIn: '1h' });
-  res.status(201).json({ message: 'Admin signed up successfully.', token });
 });
 
 app.post('/admin/courses', verifyAdmin, async (req, res) => {
@@ -287,14 +269,17 @@ app.post('/users/login', async (req, res) => {
   }
   
   // Generate a JWT token with a 1-hour expiration time
-  const token = jwt.sign({ username: username }, USER_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ username: username }, process.env.USER_SECRET, { expiresIn: '1h' });
   res.status(201).json({ message: 'Admin signed up successfully.', token });
 });
 
 app.get('/users/courses', verifyUser, async (req, res) => {
-  // logic to list all courses
-  const COURSES = await getCourses()
-  res.send(COURSES)
+  try {
+    const courses = await Course.find();
+    res.status(200).json(courses);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching courses.' });
+  }
 });
 
 app.post('/users/courses/:courseId', verifyUser, async (req, res) => {
