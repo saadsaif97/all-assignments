@@ -1,4 +1,5 @@
 const express = require('express');
+const jwt = require("jsonwebtoken");
 const app = express();
 
 app.use(express.json());
@@ -7,39 +8,83 @@ let ADMINS = [];
 let USERS = [];
 let COURSES = [];
 
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
+const USER_SECRET = process.env.USER_SECRET;
+
 function verifyAdmin(req, res, next) {
-  // logic to log in admin
-  const { username, password } = req.headers
-  if (!username || !password) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
-  }
-
-  // Check if admin exists and password matches
-  const admin = ADMINS.find(admin => admin.username === username && admin.password === password);
-
-  if (!admin) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
-  }
-  
-  req.admin = { username: admin.username }
-  next()
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        return res.status(401).json({
+            message: 'No Authorization Header'
+        })
+    }
+    try {
+        const token = authorization.split('Bearer ')[1];
+        if (!token) {
+            return res.status(401).json({
+                message: 'Invalid Token Format'
+            })
+        }
+        const decode = jwt.verify(token, ADMIN_SECRET);
+        req.admin = decode
+        next()
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return res.status(401).json({
+                message: 'Session Expired',
+                error: error.message,
+            })
+        }
+        if (error instanceof jwt.JsonWebTokenError || error instanceof TokenError) {
+            return res.status(401).json({
+                message: 'Invalid Token',
+                error: error.message,
+            })
+        }
+        res.status(500).json({
+            message: 'Internal server Error',
+            error: error.message,
+            stack: error.stack
+        });
+    }
 }
 
 function verifyUser(req, res, next) {
-  // logic to log in user
-  const { username, password } = req.headers
-  if (!username || !password) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+      return res.status(401).json({
+          message: 'No Authorization Header'
+      })
   }
-
-  // Check if user exists and password matches
-  const user = USERS.find(user => user.username === username && user.password === password);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
+  try {
+      const token = authorization.split('Bearer ')[1];
+      if (!token) {
+          return res.status(401).json({
+              message: 'Invalid Token Format'
+          })
+      }
+      const decode = jwt.verify(token, USER_SECRET);
+      req.user = decode
+      next()
+  } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+          return res.status(401).json({
+              message: 'Session Expired',
+              error: error.message,
+          })
+      }
+      if (error instanceof jwt.JsonWebTokenError || error instanceof TokenError) {
+          return res.status(401).json({
+              message: 'Invalid Token',
+              error: error.message,
+          })
+      }
+      res.status(500).json({
+          message: 'Internal server Error',
+          error: error.message,
+          stack: error.stack
+      });
   }
-  
-  req.user = { username: user.username, courses: user.courses }
-  next()
 }
 
 // Admin routes
