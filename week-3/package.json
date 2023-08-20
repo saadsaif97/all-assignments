@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dev-easy": "nodemon 02-course-app-easy",
-    "dev-easy2": "nodemon 02-course-app-easy2",
+    "dev-easy-2": "nodemon 02-course-app-easy-2",
     "dev-medium": "nodemon 02-course-app-medium",
     "dev-hard": "nodemon 02-course-app-hard"
   },
