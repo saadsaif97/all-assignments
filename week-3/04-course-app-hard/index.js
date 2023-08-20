@@ -231,41 +231,56 @@ app.get('/admin/courses', verifyAdmin, async (req, res) => {
 
 // User routes
 app.post('/users/signup', async (req, res) => {
-  // logic to sign up user
-  const { username, password } = req.body
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
-  }
+  try {
+    // logic to sign up user
+    const { username, password } = req.body
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required.' });
+    }
 
-  // Check if user already exists
-  const USERS = await getUsers()
-  if (USERS.some(user => user.username === username)) {
-    return res.status(409).json({ error: 'Username already exists.' });
-  }
+    // Check if User already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Username already exists.' });
+    }
+    
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = { username, password, courses: [] };
-  USERS.push(newUser);
-  await writeUsers(USERS)
-  res.status(201).json({ message: 'User signed up successfully.' });
+    const newUser = new User({ username, password: hashedPassword });
+    await newUser.save();
+    res.status(201).json(newUser);
+  } catch (error) {
+    res.status(500).json({error});
+  }
 });
 
 app.post('/users/login', async (req, res) => {
-  // logic to log in user
-  const { username, password } = req.headers
-  if (!username || !password) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
-  }
+  try {
+    // logic to log in user
+    const { username, password } = req.headers
+    if (!username || !password) {
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
 
-  // Check if user exists and password matches
-  const USERS = await getUsers()
-  const user = USERS.find(user => user.username === username && user.password === password);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
+    // Check if user exists and password matches
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+    
+    // Check password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+    
+    // Generate a JWT token with a 1-hour expiration time
+    const token = jwt.sign({ username }, process.env.USER_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ message: 'User signed up successfully.', token });
+  } catch (error) {
+    res.status(500).send({error: "Unable to login"})
   }
-  
-  // Generate a JWT token with a 1-hour expiration time
-  const token = jwt.sign({ username: username }, process.env.USER_SECRET, { expiresIn: '1h' });
-  res.status(201).json({ message: 'Admin signed up successfully.', token });
 });
 
 app.get('/users/courses', verifyUser, async (req, res) => {
