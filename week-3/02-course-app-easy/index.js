@@ -38,7 +38,7 @@ function verifyUser(req, res, next) {
     return res.status(401).json({ error: 'Invalid credentials.' });
   }
   
-  req.user = { username: user.username }
+  req.user = { username: user.username, courses: user.courses }
   next()
 }
 
@@ -102,8 +102,8 @@ app.post('/admin/courses', verifyAdmin, (req, res) => {
 
 app.put('/admin/courses/:courseId', verifyAdmin, (req, res) => {
   // logic to edit a course
-  const courseId = req.params.courseId;
-  const course = COURSES.find(course => course.id == courseId);
+  const courseId = parseInt(req.params.courseId);
+  const course = COURSES.find(course => course.id === courseId);
   
   if (!course) {
     return res.status(404).json({ error: 'Course not found.' });
@@ -119,8 +119,8 @@ app.put('/admin/courses/:courseId', verifyAdmin, (req, res) => {
 });
 
 app.put('/admin/courses/:courseId/publish', verifyAdmin, (req, res) => {
-  const courseId = req.params.courseId;
-  const course = COURSES.find(course => course.id == courseId);
+  const courseId = parseInt(req.params.courseId);
+  const course = COURSES.find(course => course.id === courseId);
 
   if (!course) {
     return res.status(404).json({ error: 'Course not found.' });
@@ -149,7 +149,7 @@ app.post('/users/signup', (req, res) => {
     return res.status(409).json({ error: 'Username already exists.' });
   }
 
-  const newUser = { username, password };
+  const newUser = { username, password, courses: [] };
   USERS.push(newUser);
   res.status(201).json({ message: 'User signed up successfully.' });
 });
@@ -175,14 +175,24 @@ app.post('/users/login', (req, res) => {
 
 app.get('/users/courses', verifyUser, (req, res) => {
   // logic to list all courses
+  res.send(COURSES)
 });
 
 app.post('/users/courses/:courseId', verifyUser, (req, res) => {
+  const courseId = parseInt(req.params.courseId)
   // logic to purchase a course
+  let alreadyPurchased = req.user.courses.includes(courseId);
+  if (alreadyPurchased) return res.status(400).send({error: "Already purchased"})
+  
+  const user = USERS.find(user => user.username === req.user.username);
+  user.courses.push(courseId)
+  return res.send({message: "Course purchased successfully"})
 });
 
 app.get('/users/purchasedCourses', verifyUser, (req, res) => {
   // logic to view purchased courses
+  let userCourses = COURSES.filter(course => req.user.courses.includes(course.id));
+  res.send(userCourses)
 });
 
 app.listen(3000, () => {
