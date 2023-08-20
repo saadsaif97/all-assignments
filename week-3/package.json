@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "dev-easy": "nodemon 02-course-app-easy",
+    "dev-easy2": "nodemon 02-course-app-easy2",
+    "dev-medium": "nodemon 02-course-app-medium",
+    "dev-hard": "nodemon 02-course-app-hard"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
