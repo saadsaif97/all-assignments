@@ -8,7 +8,6 @@ require('dotenv').config()
 
 app.use(express.json());
 
-let ADMINS = [];
 let USERS = [];
 let COURSES = [];
 
@@ -16,6 +15,14 @@ async function getAdmins() {
   try {
     const data = await fs.readFile('admins.json', 'utf-8');
     return JSON.parse(data)
+  } catch (error) {
+    console.log({error})
+  }
+}
+
+async function writeAdmins(admins) {
+  try {
+    await fs.writeFile('admins.json', JSON.stringify(admins), 'utf-8');
   } catch (error) {
     console.log({error})
   }
@@ -30,10 +37,26 @@ async function getUsers() {
   }
 }
 
+async function writeUsers(users) {
+  try {
+    await fs.writeFile('users.json', JSON.stringify(users), 'utf-8');
+  } catch (error) {
+    console.log({error})
+  }
+}
+
 async function getCourses() {
   try {
     const data = await fs.readFile('courses.json', 'utf-8');
     return JSON.parse(data)
+  } catch (error) {
+    console.log({error})
+  }
+}
+
+async function writeCourses(courses) {
+  try {
+    await fs.writeFile('courses.json', JSON.stringify(courses), 'utf-8');
   } catch (error) {
     console.log({error})
   }
@@ -119,23 +142,25 @@ function verifyUser(req, res, next) {
 }
 
 // Admin routes
-app.post('/admin/signup', (req, res) => {
+app.post('/admin/signup', async (req, res) => {
   const { username, password } = req.body
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required.' });
   }
 
   // Check if admin already exists
+  const ADMINS = await getAdmins()
   if (ADMINS.some(admin => admin.username === username)) {
     return res.status(409).json({ error: 'Username already exists.' });
   }
 
   const newAdmin = { username, password };
   ADMINS.push(newAdmin);
+  await writeAdmins(ADMINS)
   res.status(201).json({ message: 'Admin signed up successfully.' });
 });
 
-app.post('/admin/login', (req, res) => {
+app.post('/admin/login', async (req, res) => {
   // logic to log in admin
   const { username, password } = req.headers
   if (!username || !password) {
@@ -143,6 +168,7 @@ app.post('/admin/login', (req, res) => {
   }
 
   // Check if admin exists and password matches
+  const ADMINS = await getAdmins()
   const admin = ADMINS.find(admin => admin.username === username && admin.password === password);
 
   if (!admin) {
