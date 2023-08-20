@@ -1,1 +1,16 @@
-[{"username":"raman@gmail.com","password":"123456","courses":[0]}]
+[
+  {
+    "username": "raman@gmail.com",
+    "password": "123456",
+    "courses": [
+      0
+    ]
+  },
+  {
+    "username": "rambo@gmail.com",
+    "password": "2222",
+    "courses": [
+      0
+    ]
+  }
+]
