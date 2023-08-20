@@ -226,8 +226,10 @@ app.get('/users/courses', verifyUser, (req, res) => {
 
 app.post('/users/courses/:courseId', verifyUser, (req, res) => {
   const courseId = parseInt(req.params.courseId)
+  const currentUser = USERS.find(user => user.username == req.user.username)
+  const currentCourses = currentUser.courses
   // logic to purchase a course
-  let alreadyPurchased = req.user.courses.includes(courseId);
+  let alreadyPurchased = currentCourses.includes(courseId);
   if (alreadyPurchased) return res.status(400).send({error: "Already purchased"})
   
   const user = USERS.find(user => user.username === req.user.username);
@@ -236,8 +238,10 @@ app.post('/users/courses/:courseId', verifyUser, (req, res) => {
 });
 
 app.get('/users/purchasedCourses', verifyUser, (req, res) => {
+  const currentUser = USERS.find(user => user.username == req.user.username)
+  const currentCourses = currentUser.courses
   // logic to view purchased courses
-  let userCourses = COURSES.filter(course => req.user.courses.includes(course.id));
+  let userCourses = COURSES.filter(course => currentCourses.includes(course.id));
   res.send(userCourses)
 });
 
